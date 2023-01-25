@@ -1,12 +1,3 @@
-# struct-bindgen
-
-Generate C struct bindings between Wasm modules and host env/eBPF programs
-
-## Usage
-
-1. Create a C struct header, for example:
-
-```c
 #ifndef __SIGSNOOP_H
 #define __SIGSNOOP_H
 
@@ -21,4 +12,3 @@ struct event {
 };
 
 #endif /* __SIGSNOOP_H */
-```
