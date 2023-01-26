@@ -30,6 +30,11 @@ class bpf_object_reader
   public:
     bpf_object_reader(std::vector<char> bpf_object_buffer);
     bpf_object_reader(const char *path);
+    bpf_object_reader(const bpf_object_reader &) = delete;
+    bpf_object_reader &operator=(const bpf_object_reader &) = delete;
+    bpf_object_reader(bpf_object_reader &&) = delete;
+    bpf_object_reader &operator=(bpf_object_reader &&) = delete;
+    ~bpf_object_reader() = default;
     /// @brief get raw btf data from object
     btf *get_btf_data(void);
 };

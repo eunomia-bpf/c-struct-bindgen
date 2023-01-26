@@ -1,5 +1,5 @@
-#ifndef EUNOMIA_EXPORT_EVENTS_HPP_
-#define EUNOMIA_EXPORT_EVENTS_HPP_
+#ifndef EUNOMIA_BINDING_GENERATOR_HPP_
+#define EUNOMIA_BINDING_GENERATOR_HPP_
 
 #include <functional>
 #include <memory>
@@ -19,13 +19,13 @@ btf_dump__free(struct btf_dump *d);
 }
 
 namespace eunomia {
-/// @brief dump export event in user space
-class binding_generator
+
+class binding_generator_base
 {
     std::unique_ptr<btf_dump, void (*)(btf_dump *)> btf_dumper{
         nullptr, btf_dump__free
     };
-    std::unique_ptr<btf, void (*)(btf *)> btf_data{ nullptr, btf__free };
+    btf *btf_data;
 
   public:
     class sprintf_printer
@@ -42,14 +42,40 @@ class binding_generator
         int snprintf_event(size_t __maxlen, const char *fmt, ...);
         int vsprintf_event(const char *fmt, va_list args);
     };
-    binding_generator(btf *btf_data)
+    binding_generator_base(btf *object_btf_info)
     {
-        this->btf_data =
-            std::unique_ptr<btf, void (*)(btf *)>(btf_data, btf__free);
+        this->btf_data = object_btf_info;
     }
+    binding_generator_base(binding_generator_base &) = delete;
+    binding_generator_base(binding_generator_base &&) = delete;
+    binding_generator_base &operator=(binding_generator_base &) = delete;
+    binding_generator_base &operator=(binding_generator_base &&) = delete;
+    virtual ~binding_generator_base() = default;
     int walk_struct_for_id(std::string &output, int type_id);
+    int generate_for_all_structs(std::string &output);
+    virtual int enter_struct_def(std::string &output,
+                                 const char *struct_name) = 0;
+    virtual int leave_struct_def(std::string &output,
+                                 const char *struct_name) = 0;
+    virtual int enter_struct_field(std::string &output, const char *field_name,
+                                   const char *field_type,
+                                   const char *field_type_name) = 0;
+};
+
+class c_struct_binding_generator : public binding_generator_base
+{
+  public:
+    c_struct_binding_generator(btf *btf_data)
+      : binding_generator_base(btf_data)
+    {
+    }
+    int enter_struct_def(std::string &output, const char *struct_name) override;
+    int leave_struct_def(std::string &output, const char *struct_name) override;
+    int enter_struct_field(std::string &output, const char *field_name,
+                           const char *field_type,
+                           const char *field_type_name) override;
 };
 
 } // namespace eunomia
 
-#endif // EUNOMIA_EXPORT_EVENTS_HPP_
+#endif // EUNOMIA_BINDING_GENERATOR_HPP_
