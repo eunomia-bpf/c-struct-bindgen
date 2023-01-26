@@ -42,50 +42,51 @@ static void marshal_event__to_binary(void *dst, const struct event *src) {
 
 It can be used in the wasm module communication with the bpf program.
 
-## Usage - Compile from source
+## Usage - Compile BTF info from source with ecc
 
 See `examples/` for [examples](examples).
 
 1. Create a C struct header and a include file, for example:
 
-examples/test-event.h:
+    examples/test-event.h:
 
-```c
-#ifndef __SIGSNOOP_H
-#define __SIGSNOOP_H
+    ```c
+    #ifndef __SIGSNOOP_H
+    #define __SIGSNOOP_H
 
-#define TASK_COMM_LEN 16
+    #define TASK_COMM_LEN 16
 
-struct event {
- unsigned int pid;
- unsigned int tpid;
- int sig;
- int ret;
- char comm[TASK_COMM_LEN];
-};
+    struct event {
+        unsigned int pid;
+        unsigned int tpid;
+        int sig;
+        int ret;
+        char comm[TASK_COMM_LEN];
+    };
 
-#endif /* __SIGSNOOP_H */
-```
+    #endif /* __SIGSNOOP_H */
+    ```
 
-source.c:
+    source.c:
 
-```c
-#include "test-event.h"
+    ```c
+    #include "test-event.h"
 
-```
+    // ...
+    ```
 
-Compile with ecc (see <https://github.com/eunomia-bpf/eunomia-bpf>):
+    Compile with ecc (see <https://github.com/eunomia-bpf/eunomia-bpf>):
 
-```bash
-ecc examples/source.c examples/test-event.h
-```
+    ```bash
+    ecc examples/source.c examples/test-event.h
+    ```
 
-You will get a `source.bpf.o` file.
+    You will get a `source.bpf.o` file.
 
 2. Generate bindings:
 
-```bash
-struct-bindgen examples/source.bpf.o
-```
+    ```bash
+    struct-bindgen examples/source.bpf.o
+    ```
 
-You will get a `source-struct-binding.h` file.
+    You will get a `source-struct-binding.h` file.

@@ -30,7 +30,7 @@ main(int argc, char *argv[])
         std::cerr << "failed to get btf data" << std::endl;
         return -1;
     }
-    c_struct_binding_generator generator(btf_data);
+    debug_binding_generator generator(btf_data, "sigsnoop");
     string output;
     generator.generate_for_all_structs(output);
     return 0;
