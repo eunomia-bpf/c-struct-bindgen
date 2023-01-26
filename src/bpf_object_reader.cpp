@@ -6,6 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include <fstream>
 #include <sstream>
 #include "struct-bindgen/bpf_object_reader.h"
 #include "json.hpp"
@@ -35,6 +36,7 @@ int
 bpf_object_reader::init_libbpf(void)
 {
     libbpf_set_print(libbpf_print_fn);
+    return 0;
 }
 
 bpf_object_reader::bpf_object_reader(std::vector<char> bpf_object_buffer)
