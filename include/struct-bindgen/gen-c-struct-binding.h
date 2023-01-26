@@ -66,11 +66,15 @@ class binding_generator_base
                                   uint16_t vlen) = 0;
     virtual void exit_struct_def(std::string &output,
                                  const char *struct_name) = 0;
-    virtual void enter_struct_field(std::string &output, const char *field_name,
-                                    const char *field_type,
-                                    const char *field_type_name,
-                                    uint32_t bit_off, uint32_t size,
-                                    uint32_t bit_sz) = 0;
+    struct field_info {
+        const char *field_name;
+        const char *field_type;
+        const char *field_type_name;
+        uint32_t bit_off;
+        uint32_t size;
+        uint32_t bit_sz;
+    };
+    virtual void enter_struct_field(std::string &output, field_info info) = 0;
     virtual void start_generate(std::string &output){};
     virtual void end_generate(std::string &output){};
 };
@@ -92,19 +96,18 @@ class debug_binding_generator : public binding_generator_base
     {
         std::cout << "exit struct " << struct_name << std::endl;
     }
-    void enter_struct_field(std::string &output, const char *field_name,
-                            const char *field_type, const char *field_type_name,
-                            uint32_t bit_off, uint32_t size,
-                            uint32_t bit_sz) override
+    void enter_struct_field(std::string &output, field_info info) override
     {
-        std::cout << "enter field " << field_name << " type " << field_type
-                  << " type name " << field_type_name << " bit off " << bit_off
-                  << " size " << size << " bit sz " << bit_sz << std::endl;
+        std::cout << "enter field " << info.field_name << " type "
+                  << info.field_type << " type name " << info.field_type_name
+                  << " bit off " << info.bit_off << " size " << info.size
+                  << " bit sz " << info.bit_sz << std::endl;
     }
 };
 
 class c_struct_binding_generator : public binding_generator_base
 {
+
   public:
     c_struct_binding_generator(btf *btf_data_info, const char *object_name)
       : binding_generator_base(btf_data_info, object_name)
@@ -116,10 +119,7 @@ class c_struct_binding_generator : public binding_generator_base
     void enter_struct_def(std::string &output, const char *struct_name,
                           uint16_t vlen) override;
     void exit_struct_def(std::string &output, const char *struct_name) override;
-    void enter_struct_field(std::string &output, const char *field_name,
-                            const char *field_type, const char *field_type_name,
-                            uint32_t bit_off, uint32_t size,
-                            uint32_t bit_sz) override;
+    void enter_struct_field(std::string &output, field_info info) override;
 };
 
 } // namespace eunomia

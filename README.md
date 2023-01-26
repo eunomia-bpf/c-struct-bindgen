@@ -18,8 +18,7 @@ You will get a `source-struct-binding.h` file, for correct access to the C struc
 #include <string.h>
 
 static void unmarshal_event__from_binary(struct event *dst, const void *src) {
-    if (!src || !dst)
-        return;
+    assert(dst && src);
     dst->pid = *(unsigned int*)(src + 0);
     dst->tpid = *(unsigned int*)(src + 4);
     dst->sig = *(int*)(src + 8);
@@ -28,8 +27,7 @@ static void unmarshal_event__from_binary(struct event *dst, const void *src) {
 }
 
 static void marshal_event__to_binary(void *dst, const struct event *src) {
-    if (!src || !dst)
-        return;
+    assert(dst && src);
     *(unsigned int*)(dst + 0) = src->pid;
     *(unsigned int*)(dst + 4) = src->tpid;
     *(int*)(dst + 8) = src->sig;

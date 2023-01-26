@@ -20,8 +20,7 @@ int
 main(int argc, char *argv[])
 {
     if (argc != 2) {
-        std::cerr << "Usage: " << argv[0]
-                  << " <bpf_object_file>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <bpf_object_file>" << std::endl;
         return -1;
     }
     bpf_object_reader reader(argv[1]);
@@ -30,8 +29,13 @@ main(int argc, char *argv[])
         std::cerr << "failed to get btf data" << std::endl;
         return -1;
     }
-    debug_binding_generator generator(btf_data, "sigsnoop");
+    debug_binding_generator debug_generator(btf_data, "sigsnoop");
+    string debug_output;
+    debug_generator.generate_for_all_structs(debug_output);
+
+    c_struct_binding_generator generator(btf_data, "sigsnoop");
     string output;
     generator.generate_for_all_structs(output);
+    std::cout << output << std::endl;
     return 0;
 }
