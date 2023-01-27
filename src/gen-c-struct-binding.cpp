@@ -119,10 +119,6 @@ binding_generator_base::generate_for_all_structs(std::string &output)
 void
 binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
 {
-    DECLARE_LIBBPF_OPTS(btf_dump_emit_type_decl_opts, opts, .field_name = "",
-                        .indent_level = 2, );
-    struct btf_dump *d =
-        btf_dump__new(btf_data, btf_dump_event_printf, NULL, NULL);
     auto t = btf__type_by_id(btf_data, type_id);
     if (!t) {
         std::cerr << "type id " << type_id << " not found" << std::endl;

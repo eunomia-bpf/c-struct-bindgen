@@ -47,7 +47,7 @@ test: Catch2 ## run tests quickly with ctest
 	$(MAKE) -C test/asserts
 	cmake -Bbuild -DCMAKE_INSTALL_PREFIX=$(INSTALL_LOCATION) -Dstruct-bindgen_ENABLE_UNIT_TESTING=1 -Dstruct-bindgen_ENABLE_ASAN=1 -Dstruct-bindgen_ENABLE_CODE_COVERAGE=1
 	cmake --build build
-	cd build/ && sudo ctest -VV
+	cd build/ && ctest -VV
 
 coverage: ## check code coverage quickly GCC
 	rm -rf build/

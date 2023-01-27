@@ -26,7 +26,7 @@ static void unmarshal_event__from_binary(struct event *dst, const void *src) {
     memcpy(dst->comm, src + 16, 16);
 }
 
-static void marshal_event__to_binary(void *dst, const struct event *src) {
+static void marshal_struct_event__to_binary(void *dst, const struct event *src) {
     assert(dst && src);
     *(unsigned int*)(dst + 0) = src->pid;
     *(unsigned int*)(dst + 4) = src->tpid;

@@ -14,8 +14,8 @@ struct event {
 struct event2 {
 	float x;
 	double y;
-	int sig;
-	long long int ret;
+	int z;
+	long long int a;
 	short comm[TASK_COMM_LEN];
 };
 
