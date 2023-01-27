@@ -20,3 +20,5 @@ jobs:
           sudo make install-deps
     - name: make
       run: make
+    - name: make test
+      run: make test
