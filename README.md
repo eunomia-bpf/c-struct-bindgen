@@ -100,4 +100,5 @@ See `examples/` for [examples](examples).
 
 - [ ] Support for union in structs fields
 - [ ] Support for composite types in array fields
+- [ ] handle byte order in host env
 - [ ] Support for print out info in JSON format
