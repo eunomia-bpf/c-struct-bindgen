@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 #include <cstdint>
 
 extern "C" {
@@ -27,7 +28,7 @@ class binding_generator_base
     };
     btf *btf_data;
     void walk_all_structs(std::string &output);
-    int walk_struct_for_id(std::string &output, int type_id);
+    void walk_struct_for_id(std::string &output, int type_id);
 
   protected:
     std::string name;
@@ -67,6 +68,7 @@ class binding_generator_base
     virtual void exit_struct_def(std::string &output,
                                  const char *struct_name) = 0;
     struct field_info {
+        uint32_t type_id;
         const char *field_name;
         const char *field_type;
         const char *field_type_name;
@@ -107,6 +109,8 @@ class debug_binding_generator : public binding_generator_base
 
 class c_struct_binding_generator : public binding_generator_base
 {
+    void marshal_field(std::string &output, field_info info);
+    void unmarshal_field(std::string &output, field_info info);
 
   public:
     c_struct_binding_generator(btf *btf_data_info, const char *object_name)

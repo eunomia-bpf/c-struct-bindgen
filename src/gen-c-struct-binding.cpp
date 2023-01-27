@@ -18,19 +18,13 @@ extern "C" {
 
 using namespace eunomia;
 
+#define BUFFER_SIZE 1024
+
 static void
 btf_dump_event_printf(void *ctx, const char *fmt, va_list args)
 {
     auto printer = static_cast<binding_generator_base::sprintf_printer *>(ctx);
     printer->vsprintf_event(fmt, args);
-}
-
-static bool
-is_basic_type(const char *field_type)
-{
-    return strcmp(field_type, "enum") != 0 && strcmp(field_type, "union") != 0
-           && strcmp(field_type, "struct") != 0
-           && strcmp(field_type, "array") != 0;
 }
 
 int
@@ -122,7 +116,7 @@ binding_generator_base::generate_for_all_structs(std::string &output)
     end_generate(output);
 }
 
-int
+void
 binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
 {
     DECLARE_LIBBPF_OPTS(btf_dump_emit_type_decl_opts, opts, .field_name = "",
@@ -132,12 +126,12 @@ binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
     auto t = btf__type_by_id(btf_data, type_id);
     if (!t) {
         std::cerr << "type id " << type_id << " not found" << std::endl;
-        return -1;
+        throw std::runtime_error("type id not found");
     }
     auto struct_name = btf__name_by_offset(btf_data, t->name_off);
     if (!btf_is_struct(t)) {
         std::cerr << "type id " << type_id << " is not a struct" << std::endl;
-        return -1;
+        throw std::runtime_error("type id is not a struct");
     }
     btf_member *m = btf_members(t);
     __u16 vlen = BTF_INFO_VLEN(t->info);
@@ -176,26 +170,35 @@ binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
         }
         else if (btf_is_array(field_type)) {
             type_str = "array";
-            int err =
-                get_btf_type_str(member_type_id, btf_data, field_type_name);
-            if (err < 0) {
-                std::cerr << "failed to get type string" << std::endl;
-                return err;
+            if (btf_is_composite(field_type)) {
+                std::cerr << "composite array not supported" << std::endl;
+                throw std::runtime_error("composite array not supported");
+            }
+            else {
+                int err =
+                    get_btf_type_str(member_type_id, btf_data, field_type_name);
+                if (err < 0) {
+                    std::cerr << "failed to get type string for " << member_name
+                              << " member_type_id" << member_type_id
+                              << std::endl;
+                    throw std::runtime_error("failed to get type string");
+                }
             }
         }
         else {
             int err = get_btf_type_str(member_type_id, btf_data, type_str);
             if (err < 0) {
-                std::cerr << "failed to get type string" << std::endl;
-                return err;
+                std::cerr << "failed to get type string for " << member_name
+                          << " member_type_id" << member_type_id << std::endl;
+                throw std::runtime_error("failed to get type string");
             }
         }
-        enter_struct_field(output, field_info{ member_name, type_str.c_str(),
-                                               field_type_name.c_str(), bit_off,
-                                               size, bit_sz });
+        enter_struct_field(output,
+                           field_info{ m->type, member_name, type_str.c_str(),
+                                       field_type_name.c_str(), bit_off, size,
+                                       bit_sz });
     }
     exit_struct_def(output, struct_name);
-    return 0;
 }
 
 void
@@ -214,7 +217,7 @@ c_struct_binding_generator::start_generate(std::string &output)
 #include <stdint.h>
 
 )";
-    char header[1024];
+    char header[BUFFER_SIZE];
     snprintf(header, sizeof(header), header_format, upper_name.c_str(),
              upper_name.c_str());
     output += header;
@@ -240,7 +243,7 @@ c_struct_binding_generator::enter_struct_def(std::string &output,
 static void marshal_struct_%s__to_binary(void *dst, const struct %s *src) {
     assert(dst && src);
 )";
-        char struct_def[1024];
+        char struct_def[BUFFER_SIZE];
         snprintf(struct_def, sizeof(struct_def), function_proto, struct_name,
                  struct_name);
         output += struct_def;
@@ -251,7 +254,7 @@ static void marshal_struct_%s__to_binary(void *dst, const struct %s *src) {
 static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *src) {
     assert(dst && src);
 )";
-        char struct_def[1024];
+        char struct_def[BUFFER_SIZE];
         snprintf(struct_def, sizeof(struct_def), function_proto, struct_name,
                  struct_name);
         output += struct_def;
@@ -266,7 +269,103 @@ c_struct_binding_generator::exit_struct_def(std::string &output,
 }
 
 void
+c_struct_binding_generator::marshal_field(std::string &output, field_info info)
+{
+    uint32_t offset = info.bit_off / 8;
+
+    if (strcmp(info.field_type, "array") == 0) {
+        const char *array_type_format = R"(    memcpy(dst + %d, src->%s, %d);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 array_type_format, offset, info.field_name, info.size);
+        output += field_marshal_code;
+    }
+    else if (strcmp(info.field_type, "struct") == 0) {
+        const char *struct_type_format =
+            R"(    marshal_struct_%s__to_binary(dst + %d, &src->%s);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 struct_type_format, info.field_type_name, offset,
+                 info.field_name);
+        output += field_marshal_code;
+    }
+    else if (strcmp(info.field_type, "union") == 0) {
+        const char *union_type_format =
+            R"(    marshal_union_%s__to_binary(dst + %d, &src->%s);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 union_type_format, info.field_type_name, offset,
+                 info.field_name);
+        output += field_marshal_code;
+    }
+    else {
+        const char *basic_type_format = R"(    *(%s*)(dst + %d) = src->%s;
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 basic_type_format, info.field_type, offset, info.field_name);
+        output += field_marshal_code;
+    }
+}
+void
+c_struct_binding_generator::unmarshal_field(std::string &output,
+                                            field_info info)
+{
+    uint32_t offset = info.bit_off / 8;
+
+    if (strcmp(info.field_type, "array") == 0) {
+        const char *array_type_format = R"(    memcpy(src->%s, dst + %d, %d);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 array_type_format, info.field_name, offset, info.size);
+        output += field_marshal_code;
+    }
+    else if (strcmp(info.field_type, "struct") == 0) {
+        const char *struct_type_format =
+            R"(    unmarshal_struct_%s__from_binary(&src->%s, dst + %d);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 struct_type_format, info.field_type_name, info.field_name,
+                 offset);
+        output += field_marshal_code;
+    }
+    else if (strcmp(info.field_type, "union") == 0) {
+        const char *union_type_format =
+            R"(    unmarshal_union_%s__from_binary(&src->%s, dst + %d);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 union_type_format, info.field_type_name, info.field_name,
+                 offset);
+        output += field_marshal_code;
+    }
+    else {
+        const char *basic_type_format = R"(    src->%s = *(%s*)(dst + %d);
+)";
+        char field_marshal_code[BUFFER_SIZE];
+        snprintf(field_marshal_code, sizeof(field_marshal_code),
+                 basic_type_format, info.field_name, info.field_type, offset);
+        output += field_marshal_code;
+    }
+}
+
+void
 c_struct_binding_generator::enter_struct_field(std::string &output,
                                                field_info info)
 {
+    if (info.bit_sz != 0) {
+        std::cerr << "bitfield not supported" << std::endl;
+        throw std::runtime_error("bitfield not supported");
+    }
+    if (walk_count == 0) {
+        marshal_field(output, info);
+    }
+    else {
+        unmarshal_field(output, info);
+    }
 }
