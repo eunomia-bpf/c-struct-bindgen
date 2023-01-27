@@ -11,4 +11,12 @@ struct event {
 	char comm[TASK_COMM_LEN];
 };
 
+struct event2 {
+	float x;
+	double y;
+	int sig;
+	long long int ret;
+	short comm[TASK_COMM_LEN];
+};
+
 #endif /* __SIGSNOOP_H */

@@ -1,11 +1,10 @@
 set(sources
+    src/bpf_object_reader.cpp
     src/gen-c-struct-binding.cpp
 )
 
 set(exe_sources
 		src/main.cpp
-        src/bpf_object_reader.cpp
-        src/gen-c-struct-binding.cpp
 		${sources}
 )
 
@@ -21,5 +20,5 @@ set(third_party_headers
 )
 
 set(test_sources
-    src/config_test.cpp
+    src/bpf_object_reader_test.cpp
 )

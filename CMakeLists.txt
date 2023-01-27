@@ -190,6 +190,13 @@ set(LIBBPF_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/libbpf/libbpf.a)
 add_dependencies(${PROJECT_NAME} libbpf-build)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${LIBBPF_LIBRARIES} -lelf -lz)
 
+if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
+  target_link_libraries(
+    ${PROJECT_NAME}_LIB
+    PUBLIC ${LIBBPF_LIBRARIES} -lelf -lz
+  )
+endif()
+
 # For Windows, it is necessary to link with the MultiThreaded library.
 # Depending on how the rest of the project's dependencies are linked, it might be necessary
 # to change the line to statically link with the library.
