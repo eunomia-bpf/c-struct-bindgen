@@ -215,7 +215,6 @@ c_struct_binding_generator::start_generate(std::string &output)
 
 #include <string.h>
 #include <stdint.h>
-
 )";
     char header[BUFFER_SIZE];
     snprintf(header, sizeof(header), header_format, upper_name.c_str(),
@@ -240,7 +239,9 @@ c_struct_binding_generator::enter_struct_def(std::string &output,
     if (walk_count == 0) {
         // generate marshal function
         const char *function_proto = R"(
-static void marshal_struct_%s__to_binary(void *dst, const struct %s *src) {
+static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
+    // avoid -Wpointer-arith warning
+    char* dst = (char*)_dst;
     assert(dst && src);
 )";
         char struct_def[BUFFER_SIZE];
@@ -251,7 +252,9 @@ static void marshal_struct_%s__to_binary(void *dst, const struct %s *src) {
     else {
         // generate unmarshal function
         const char *function_proto = R"(
-static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *src) {
+static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
+    // avoid -Wpointer-arith warning
+    const char* src = (const char*)_src;
     assert(dst && src);
 )";
         char struct_def[BUFFER_SIZE];
@@ -317,7 +320,7 @@ c_struct_binding_generator::unmarshal_field(std::string &output,
     uint32_t offset = info.bit_off / 8;
 
     if (strcmp(info.field_type, "array") == 0) {
-        const char *array_type_format = R"(    memcpy(src->%s, dst + %d, %d);
+        const char *array_type_format = R"(    memcpy(dst->%s, src + %d, %d);
 )";
         char field_marshal_code[BUFFER_SIZE];
         snprintf(field_marshal_code, sizeof(field_marshal_code),
@@ -326,7 +329,7 @@ c_struct_binding_generator::unmarshal_field(std::string &output,
     }
     else if (strcmp(info.field_type, "struct") == 0) {
         const char *struct_type_format =
-            R"(    unmarshal_struct_%s__from_binary(&src->%s, dst + %d);
+            R"(    unmarshal_struct_%s__from_binary(&dst->%s, src + %d);
 )";
         char field_marshal_code[BUFFER_SIZE];
         snprintf(field_marshal_code, sizeof(field_marshal_code),
@@ -336,7 +339,7 @@ c_struct_binding_generator::unmarshal_field(std::string &output,
     }
     else if (strcmp(info.field_type, "union") == 0) {
         const char *union_type_format =
-            R"(    unmarshal_union_%s__from_binary(&src->%s, dst + %d);
+            R"(    unmarshal_union_%s__from_binary(&dst->%s, src + %d);
 )";
         char field_marshal_code[BUFFER_SIZE];
         snprintf(field_marshal_code, sizeof(field_marshal_code),
@@ -345,7 +348,7 @@ c_struct_binding_generator::unmarshal_field(std::string &output,
         output += field_marshal_code;
     }
     else {
-        const char *basic_type_format = R"(    src->%s = *(%s*)(dst + %d);
+        const char *basic_type_format = R"(    dst->%s = *(%s*)(src + %d);
 )";
         char field_marshal_code[BUFFER_SIZE];
         snprintf(field_marshal_code, sizeof(field_marshal_code),

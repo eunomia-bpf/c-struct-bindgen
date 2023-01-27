@@ -21,4 +21,5 @@ set(third_party_headers
 
 set(test_sources
     src/bpf_object_reader_test.cpp
+    src/marshal_struct_test.cpp
 )
