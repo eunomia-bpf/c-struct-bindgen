@@ -56,14 +56,21 @@ See `examples/` for [examples](examples).
 
     struct event {
         unsigned int pid;
-        unsigned int tpid;
+        double x;
         int sig;
-        int ret;
+        float y;
         char comm[TASK_COMM_LEN];
+    };
+
+    struct event2 {
+        struct event e2;
+        double g;
     };
 
     #endif /* __SIGSNOOP_H */
     ```
+
+    Note: the struct name can be any name, and multiple structs in a header are also supported. The type of struct fields can be any C type, and the struct can be nested.
 
     source.c:
 
@@ -88,3 +95,9 @@ See `examples/` for [examples](examples).
     ```
 
     You will get a `source-struct-binding.h` file.
+
+## TODO
+
+- [ ] Support for union in structs fields
+- [ ] Support for composite types in array fields
+- [ ] Support for print out info in JSON format

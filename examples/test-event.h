@@ -19,4 +19,9 @@ struct event2 {
 	short comm[TASK_COMM_LEN];
 };
 
+struct event3 {
+	struct event2 e2;
+	double g;
+};
+
 #endif /* __SIGSNOOP_H */
