@@ -12,6 +12,7 @@ struct event {
 };
 
 struct event2 {
+	void* unused_ptr;
 	float x;
 	double y;
 	int z;
