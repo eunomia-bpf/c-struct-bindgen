@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <cstdint>
+#include "config.h"
 
 extern "C" {
 struct btf;
@@ -31,9 +32,11 @@ class binding_generator_base
     void walk_struct_for_id(std::string &output, int type_id);
 
   protected:
-    std::string name;
     size_t walk_count;
     size_t max_walk_count = 1;
+    config generator_config;
+
+    std::string get_file_header();
 
   public:
     class sprintf_printer
@@ -50,10 +53,10 @@ class binding_generator_base
         int snprintf_event(size_t __maxlen, const char *fmt, ...);
         int vsprintf_event(const char *fmt, va_list args);
     };
-    binding_generator_base(btf *object_btf_info, const char *object_name)
+    binding_generator_base(btf *object_btf_info, config &c)
     {
         this->btf_data = object_btf_info;
-        this->name = object_name;
+        this->generator_config = c;
     }
     binding_generator_base(binding_generator_base &) = delete;
     binding_generator_base(binding_generator_base &&) = delete;
@@ -84,8 +87,8 @@ class binding_generator_base
 class debug_binding_generator : public binding_generator_base
 {
   public:
-    debug_binding_generator(btf *btf_data_info, const char *object_name)
-      : binding_generator_base(btf_data_info, object_name)
+    debug_binding_generator(btf *btf_data_info, config &c)
+      : binding_generator_base(btf_data_info, c)
     {
     }
     void enter_struct_def(std::string &output, const char *struct_name,
@@ -113,8 +116,8 @@ class c_struct_binding_generator : public binding_generator_base
     void unmarshal_field(std::string &output, field_info info);
 
   public:
-    c_struct_binding_generator(btf *btf_data_info, const char *object_name)
-      : binding_generator_base(btf_data_info, object_name)
+    c_struct_binding_generator(btf *btf_data_info, config &c)
+      : binding_generator_base(btf_data_info, c)
     {
         max_walk_count = 2;
     }
