@@ -23,8 +23,8 @@ TEST_CASE("test generate c struct", "[event1]")
 {
     bpf_object_reader reader("../../test/asserts/source.bpf.o");
     auto btf_data = reader.get_btf_data();
-
-    c_struct_binding_generator generator(btf_data, "sigsnoop");
+    auto c = config{ false, "source.bpf.o" };
+    c_struct_binding_generator generator(btf_data, c);
     string output;
     generator.generate_for_all_structs(output);
     std::cout << output << std::endl;

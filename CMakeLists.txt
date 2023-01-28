@@ -10,6 +10,12 @@ project(
   LANGUAGES CXX C
 )
 
+file(READ "VERSION" EUNOMIA_VERSION)
+string(APPEND EUNOMIA_VERSION "\"")
+string(PREPEND EUNOMIA_VERSION "\"")
+
+add_compile_definitions(EUNOMIA_VERSION=${EUNOMIA_VERSION})
+
 #
 # Set project options
 #
