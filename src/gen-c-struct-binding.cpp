@@ -198,7 +198,7 @@ binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
 }
 
 std::string
-binding_generator_base::get_file_header()
+binding_generator_base::get_c_file_header()
 {
     char header_buffer[BUFFER_SIZE];
     std::string header;
@@ -235,10 +235,18 @@ binding_generator_base::get_file_header()
     return header;
 }
 
+std::string
+binding_generator_base::get_c_file_footer() {
+    if (!generator_config.use_pragma_once) {
+        return "\n#endif\n";
+    }
+    return "";
+}
+
 void
-c_struct_binding_generator::start_generate(std::string &output)
+c_struct_marshal_generator::start_generate(std::string &output)
 {
-    auto header = get_file_header();
+    auto header = get_c_file_header();
     header += R"(
 #include <assert.h>
 #include <string.h>
@@ -248,15 +256,13 @@ c_struct_binding_generator::start_generate(std::string &output)
 }
 
 void
-c_struct_binding_generator::end_generate(std::string &output)
+c_struct_marshal_generator::end_generate(std::string &output)
 {
-    if (!generator_config.use_pragma_once) {
-        output += "#endif\n";
-    }
+    output += get_c_file_footer();
 }
 
 void
-c_struct_binding_generator::enter_struct_def(std::string &output,
+c_struct_marshal_generator::enter_struct_def(std::string &output,
                                              const char *struct_name,
                                              uint16_t vlen)
 {
@@ -289,14 +295,14 @@ static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
 }
 
 void
-c_struct_binding_generator::exit_struct_def(std::string &output,
+c_struct_marshal_generator::exit_struct_def(std::string &output,
                                             const char *struct_name)
 {
     output += "}\n";
 }
 
 void
-c_struct_binding_generator::marshal_field(std::string &output, field_info info)
+c_struct_marshal_generator::marshal_field(std::string &output, field_info info)
 {
     uint32_t offset = info.bit_off / 8;
 
@@ -338,7 +344,7 @@ c_struct_binding_generator::marshal_field(std::string &output, field_info info)
     }
 }
 void
-c_struct_binding_generator::unmarshal_field(std::string &output,
+c_struct_marshal_generator::unmarshal_field(std::string &output,
                                             field_info info)
 {
     uint32_t offset = info.bit_off / 8;
@@ -382,7 +388,7 @@ c_struct_binding_generator::unmarshal_field(std::string &output,
 }
 
 void
-c_struct_binding_generator::enter_struct_field(std::string &output,
+c_struct_marshal_generator::enter_struct_field(std::string &output,
                                                field_info info)
 {
     if (info.bit_sz != 0) {

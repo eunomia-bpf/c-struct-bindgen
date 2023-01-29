@@ -36,7 +36,8 @@ class binding_generator_base
     size_t max_walk_count = 1;
     config generator_config;
 
-    std::string get_file_header();
+    std::string get_c_file_header();
+    std::string get_c_file_footer();
 
   public:
     class sprintf_printer
@@ -110,13 +111,13 @@ class debug_binding_generator : public binding_generator_base
     }
 };
 
-class c_struct_binding_generator : public binding_generator_base
+class c_struct_marshal_generator : public binding_generator_base
 {
     void marshal_field(std::string &output, field_info info);
     void unmarshal_field(std::string &output, field_info info);
 
   public:
-    c_struct_binding_generator(btf *btf_data_info, config &c)
+    c_struct_marshal_generator(btf *btf_data_info, config &c)
       : binding_generator_base(btf_data_info, c)
     {
         max_walk_count = 2;

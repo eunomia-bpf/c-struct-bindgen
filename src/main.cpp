@@ -30,7 +30,7 @@ main(int argc, char *argv[])
         return -1;
     }
     auto c = config { false, argv[1] };
-    c_struct_binding_generator generator(btf_data, c);
+    c_struct_marshal_generator generator(btf_data, c);
     string output;
     generator.generate_for_all_structs(output);
     std::cout << output << std::endl;
