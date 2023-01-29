@@ -236,7 +236,8 @@ binding_generator_base::get_c_file_header()
 }
 
 std::string
-binding_generator_base::get_c_file_footer() {
+binding_generator_base::get_c_file_footer()
+{
     if (!generator_config.use_pragma_once) {
         return "\n#endif\n";
     }
@@ -343,6 +344,7 @@ c_struct_marshal_generator::marshal_field(std::string &output, field_info info)
         output += field_marshal_code;
     }
 }
+
 void
 c_struct_marshal_generator::unmarshal_field(std::string &output,
                                             field_info info)
@@ -403,7 +405,6 @@ c_struct_marshal_generator::enter_struct_field(std::string &output,
     }
 }
 
-
 void
 c_struct_define_generator::start_generate(std::string &output)
 {
@@ -424,15 +425,15 @@ c_struct_define_generator::end_generate(std::string &output)
 
 void
 c_struct_define_generator::enter_struct_def(std::string &output,
-                                             const char *struct_name,
-                                             uint16_t vlen)
+                                            const char *struct_name,
+                                            uint16_t vlen)
 {
     output += "\nstruct " + std::string(struct_name) + " {\n";
 }
 
 void
 c_struct_define_generator::exit_struct_def(std::string &output,
-                                            const char *struct_name)
+                                           const char *struct_name)
 {
     output += "} __attribute__((packed));\n";
 }
@@ -441,12 +442,11 @@ void
 c_struct_define_generator::define_new_field(std::string &output,
                                             field_info info)
 {
-    
 }
 
 void
 c_struct_define_generator::enter_struct_field(std::string &output,
-                                               field_info info)
+                                              field_info info)
 {
     if (info.bit_sz != 0) {
         std::cerr << "bitfield not supported" << std::endl;

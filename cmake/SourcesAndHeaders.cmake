@@ -1,6 +1,7 @@
 set(sources
     src/bpf_object_reader.cpp
     src/gen-c-struct-binding.cpp
+    src/gen-json-binding.cpp
 )
 
 set(exe_sources

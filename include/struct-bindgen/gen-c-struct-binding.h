@@ -130,13 +130,31 @@ class c_struct_marshal_generator : public binding_generator_base
     void enter_struct_field(std::string &output, field_info info) override;
 };
 
-
 class c_struct_define_generator : public binding_generator_base
 {
     void define_new_field(std::string &output, field_info info);
 
   public:
     c_struct_define_generator(btf *btf_data_info, config &c)
+      : binding_generator_base(btf_data_info, c)
+    {
+        max_walk_count = 1;
+    }
+    void start_generate(std::string &output) override;
+    void end_generate(std::string &output) override;
+    void enter_struct_def(std::string &output, const char *struct_name,
+                          uint16_t vlen) override;
+    void exit_struct_def(std::string &output, const char *struct_name) override;
+    void enter_struct_field(std::string &output, field_info info) override;
+};
+
+class c_struct_json_generator : public binding_generator_base
+{
+    void marshal_field(std::string &output, field_info info);
+    void unmarshal_field(std::string &output, field_info info);
+
+  public:
+    c_struct_json_generator(btf *btf_data_info, config &c)
       : binding_generator_base(btf_data_info, c)
     {
         max_walk_count = 1;
