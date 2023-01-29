@@ -402,3 +402,55 @@ c_struct_marshal_generator::enter_struct_field(std::string &output,
         unmarshal_field(output, info);
     }
 }
+
+
+void
+c_struct_define_generator::start_generate(std::string &output)
+{
+    auto header = get_c_file_header();
+    header += R"(
+#include <assert.h>
+#include <string.h>
+#include <stdint.h>
+)";
+    output += header;
+}
+
+void
+c_struct_define_generator::end_generate(std::string &output)
+{
+    output += get_c_file_footer();
+}
+
+void
+c_struct_define_generator::enter_struct_def(std::string &output,
+                                             const char *struct_name,
+                                             uint16_t vlen)
+{
+    output += "\nstruct " + std::string(struct_name) + " {\n";
+}
+
+void
+c_struct_define_generator::exit_struct_def(std::string &output,
+                                            const char *struct_name)
+{
+    output += "} __attribute__((packed));\n";
+}
+
+void
+c_struct_define_generator::define_new_field(std::string &output,
+                                            field_info info)
+{
+    
+}
+
+void
+c_struct_define_generator::enter_struct_field(std::string &output,
+                                               field_info info)
+{
+    if (info.bit_sz != 0) {
+        std::cerr << "bitfield not supported" << std::endl;
+        throw std::runtime_error("bitfield not supported");
+    }
+    define_new_field(output, info);
+}
