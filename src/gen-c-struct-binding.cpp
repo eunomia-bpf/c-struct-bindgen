@@ -469,7 +469,7 @@ c_struct_define_generator::define_new_field(std::string &output,
                         .field_name = info.field_name, .indent_level = 2,
                         .strip_mods = false, );
     const uint32_t offset = info.bit_off / 8;
-    unsigned int need_off = offset, align_off, align;
+    unsigned int need_off = offset;
     default_printer.reset();
 
     if (off > need_off) {
@@ -479,13 +479,36 @@ c_struct_define_generator::define_new_field(std::string &output,
                                  + ": need offset " + std::to_string(need_off)
                                  + ", already at " + std::to_string(off) + ".");
     }
-
     if (off < need_off) {
         default_printer.sprintf_event("    char __pad%d[%d];\n", pad_cnt,
                                       need_off - off);
         pad_cnt++;
     }
-
+    // avid pointer use
+    if (btf_is_ptr(var)) {
+        int ptr_type_id = -1;
+        auto ptr_size = btf__pointer_size(btf_data);
+        if (ptr_size == 8) {
+            ptr_type_id = btf__find_by_name(btf_data, "uint64_t");
+            if (ptr_type_id < 0) {
+                ptr_type_id = btf__add_int(btf_data, "uint64_t", 8, 0);
+            }
+        }
+        else if (ptr_size == 4) {
+            ptr_type_id = btf__find_by_name(btf_data, "uint32_t");
+            if (ptr_type_id < 0) {
+                ptr_type_id = btf__add_int(btf_data, "uint32_t", 4, 0);
+            }
+        }
+        else {
+            throw std::runtime_error(
+                "Unsupported pointer size: " + std::to_string(ptr_size) + ".");
+        }
+        if (ptr_type_id < 0) {
+            throw std::runtime_error("fail to find pointer type.");
+        }
+        info.type_id = ptr_type_id;
+    }
     default_printer.sprintf_event("    ");
     int err = btf_dump__emit_type_decl(btf_dumper.get(), info.type_id, &opts);
     if (err) {

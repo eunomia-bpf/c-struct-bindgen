@@ -29,8 +29,8 @@ main(int argc, char *argv[])
         std::cerr << "failed to get btf data" << std::endl;
         return -1;
     }
-    auto c = config { false, argv[1] };
-    c_struct_marshal_generator generator(btf_data, c);
+    auto c = config{ false, argv[1] };
+    c_struct_define_generator generator(btf_data, c);
     string output;
     generator.generate_for_all_structs(output);
     std::cout << output << std::endl;
