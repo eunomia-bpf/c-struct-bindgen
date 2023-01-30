@@ -24,20 +24,8 @@ namespace eunomia {
 
 class binding_generator_base
 {
-    std::unique_ptr<btf_dump, void (*)(btf_dump *)> btf_dumper{
-        nullptr, btf_dump__free
-    };
-    btf *btf_data;
     void walk_all_structs(std::string &output);
     void walk_struct_for_id(std::string &output, int type_id);
-
-  protected:
-    size_t walk_count;
-    size_t max_walk_count = 1;
-    config generator_config;
-
-    std::string get_c_file_header();
-    std::string get_c_file_footer();
 
   public:
     class sprintf_printer
@@ -54,11 +42,7 @@ class binding_generator_base
         int snprintf_event(size_t __maxlen, const char *fmt, ...);
         int vsprintf_event(const char *fmt, va_list args);
     };
-    binding_generator_base(btf *object_btf_info, config &c)
-    {
-        this->btf_data = object_btf_info;
-        this->generator_config = c;
-    }
+    binding_generator_base(btf *object_btf_info, config &c);
     binding_generator_base(binding_generator_base &) = delete;
     binding_generator_base(binding_generator_base &&) = delete;
     binding_generator_base &operator=(binding_generator_base &) = delete;
@@ -66,12 +50,8 @@ class binding_generator_base
     virtual ~binding_generator_base() = default;
 
     void generate_for_all_structs(std::string &output);
-
-    virtual void enter_struct_def(std::string &output, const char *struct_name,
-                                  uint16_t vlen) = 0;
-    virtual void exit_struct_def(std::string &output,
-                                 const char *struct_name) = 0;
     struct field_info {
+        size_t index;
         uint32_t type_id;
         const char *field_name;
         const char *field_type;
@@ -80,6 +60,28 @@ class binding_generator_base
         uint32_t size;
         uint32_t bit_sz;
     };
+    struct struct_info {
+        int type_id;
+        uint32_t size;
+        const char *struct_name;
+        uint16_t vlen;
+    };
+
+  protected:
+    std::unique_ptr<btf_dump, void (*)(btf_dump *)> btf_dumper{
+        nullptr, btf_dump__free
+    };
+    sprintf_printer default_printer;
+    btf *btf_data;
+    size_t walk_count;
+    size_t max_walk_count = 1;
+    config generator_config;
+
+    std::string get_c_file_header();
+    std::string get_c_file_footer();
+
+    virtual void enter_struct_def(std::string &output, struct_info info) = 0;
+    virtual void exit_struct_def(std::string &output, struct_info info) = 0;
     virtual void enter_struct_field(std::string &output, field_info info) = 0;
     virtual void start_generate(std::string &output){};
     virtual void end_generate(std::string &output){};
@@ -92,15 +94,14 @@ class debug_binding_generator : public binding_generator_base
       : binding_generator_base(btf_data_info, c)
     {
     }
-    void enter_struct_def(std::string &output, const char *struct_name,
-                          uint16_t vlen) override
+    void enter_struct_def(std::string &output, struct_info info) override
     {
-        std::cout << "enter struct " << struct_name << " vlen" << vlen
+        std::cout << "enter struct " << info.struct_name << " vlen" << info.vlen
                   << std::endl;
     }
-    void exit_struct_def(std::string &output, const char *struct_name) override
+    void exit_struct_def(std::string &output, struct_info info) override
     {
-        std::cout << "exit struct " << struct_name << std::endl;
+        std::cout << "exit struct " << info.struct_name << std::endl;
     }
     void enter_struct_field(std::string &output, field_info info) override
     {
@@ -124,15 +125,15 @@ class c_struct_marshal_generator : public binding_generator_base
     }
     void start_generate(std::string &output) override;
     void end_generate(std::string &output) override;
-    void enter_struct_def(std::string &output, const char *struct_name,
-                          uint16_t vlen) override;
-    void exit_struct_def(std::string &output, const char *struct_name) override;
+    void enter_struct_def(std::string &output, struct_info info) override;
+    void exit_struct_def(std::string &output, struct_info info) override;
     void enter_struct_field(std::string &output, field_info info) override;
 };
 
 class c_struct_define_generator : public binding_generator_base
 {
     void define_new_field(std::string &output, field_info info);
+    unsigned int off = 0, pad_cnt = 0, struct_vlen;
 
   public:
     c_struct_define_generator(btf *btf_data_info, config &c)
@@ -142,9 +143,8 @@ class c_struct_define_generator : public binding_generator_base
     }
     void start_generate(std::string &output) override;
     void end_generate(std::string &output) override;
-    void enter_struct_def(std::string &output, const char *struct_name,
-                          uint16_t vlen) override;
-    void exit_struct_def(std::string &output, const char *struct_name) override;
+    void enter_struct_def(std::string &output, struct_info info) override;
+    void exit_struct_def(std::string &output, struct_info info) override;
     void enter_struct_field(std::string &output, field_info info) override;
 };
 
@@ -161,9 +161,8 @@ class c_struct_json_generator : public binding_generator_base
     }
     void start_generate(std::string &output) override;
     void end_generate(std::string &output) override;
-    void enter_struct_def(std::string &output, const char *struct_name,
-                          uint16_t vlen) override;
-    void exit_struct_def(std::string &output, const char *struct_name) override;
+    void enter_struct_def(std::string &output, struct_info info) override;
+    void exit_struct_def(std::string &output, struct_info info) override;
     void enter_struct_field(std::string &output, field_info info) override;
 };
 

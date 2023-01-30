@@ -106,6 +106,18 @@ binding_generator_base::walk_all_structs(std::string &output)
     }
 }
 
+binding_generator_base::binding_generator_base(btf *object_btf_info, config &c)
+{
+    this->btf_data = object_btf_info;
+    this->generator_config = c;
+    struct btf_dump *d = btf_dump__new(object_btf_info, btf_dump_event_printf,
+                                       &default_printer, nullptr);
+    if (!d) {
+        throw std::runtime_error("btf_dump__new failed");
+    }
+    this->btf_dumper.reset(d);
+}
+
 void
 binding_generator_base::generate_for_all_structs(std::string &output)
 {
@@ -131,7 +143,9 @@ binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
     }
     btf_member *m = btf_members(t);
     __u16 vlen = BTF_INFO_VLEN(t->info);
-    enter_struct_def(output, struct_name, vlen);
+    uint32_t struct_size = btf__resolve_size(btf_data, type_id);
+    enter_struct_def(output,
+                     struct_info{ type_id, struct_size, struct_name, vlen });
     for (size_t i = 0; i < vlen; i++, m++) {
         // found btf type id
         const char *member_name = btf__name_by_offset(btf_data, m->name_off);
@@ -189,12 +203,13 @@ binding_generator_base::walk_struct_for_id(std::string &output, int type_id)
                 throw std::runtime_error("failed to get type string");
             }
         }
-        enter_struct_field(output,
-                           field_info{ m->type, member_name, type_str.c_str(),
-                                       field_type_name.c_str(), bit_off, size,
-                                       bit_sz });
+        enter_struct_field(output, field_info{ i, m->type, member_name,
+                                               type_str.c_str(),
+                                               field_type_name.c_str(), bit_off,
+                                               size, bit_sz });
     }
-    exit_struct_def(output, struct_name);
+    exit_struct_def(output,
+                    struct_info{ type_id, struct_size, struct_name, vlen });
 }
 
 std::string
@@ -264,8 +279,7 @@ c_struct_marshal_generator::end_generate(std::string &output)
 
 void
 c_struct_marshal_generator::enter_struct_def(std::string &output,
-                                             const char *struct_name,
-                                             uint16_t vlen)
+                                             struct_info info)
 {
     if (walk_count == 0) {
         // generate marshal function
@@ -275,10 +289,10 @@ static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
     char* dst = (char*)_dst;
     assert(dst && src);
 )";
-        char struct_def[BUFFER_SIZE];
-        snprintf(struct_def, sizeof(struct_def), function_proto, struct_name,
-                 struct_name);
-        output += struct_def;
+        default_printer.reset();
+        default_printer.sprintf_event(function_proto, info.struct_name,
+                                      info.struct_name);
+        output += default_printer.buffer;
     }
     else {
         // generate unmarshal function
@@ -288,16 +302,16 @@ static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
     const char* src = (const char*)_src;
     assert(dst && src);
 )";
-        char struct_def[BUFFER_SIZE];
-        snprintf(struct_def, sizeof(struct_def), function_proto, struct_name,
-                 struct_name);
-        output += struct_def;
+        default_printer.reset();
+        default_printer.sprintf_event(function_proto, info.struct_name,
+                                      info.struct_name);
+        output += default_printer.buffer;
     }
 }
 
 void
 c_struct_marshal_generator::exit_struct_def(std::string &output,
-                                            const char *struct_name)
+                                            struct_info info)
 {
     output += "}\n";
 }
@@ -425,16 +439,24 @@ c_struct_define_generator::end_generate(std::string &output)
 
 void
 c_struct_define_generator::enter_struct_def(std::string &output,
-                                            const char *struct_name,
-                                            uint16_t vlen)
+                                            struct_info info)
 {
-    output += "\nstruct " + std::string(struct_name) + " {\n";
+    output += "\nstruct " + std::string(info.struct_name) + " {\n";
+    struct_vlen = info.vlen;
+    off = 0;
+    pad_cnt = 0;
 }
 
 void
 c_struct_define_generator::exit_struct_def(std::string &output,
-                                           const char *struct_name)
+                                           struct_info info)
 {
+    if (off < info.size) {
+        default_printer.reset();
+        default_printer.sprintf_event("    char __pad%d[%d];\n", pad_cnt,
+                                      info.size - off);
+        output += default_printer.buffer;
+    }
     output += "} __attribute__((packed));\n";
 }
 
@@ -442,13 +464,46 @@ void
 c_struct_define_generator::define_new_field(std::string &output,
                                             field_info info)
 {
+    const struct btf_type *var = btf__type_by_id(btf_data, info.type_id);
+    DECLARE_LIBBPF_OPTS(btf_dump_emit_type_decl_opts, opts,
+                        .field_name = info.field_name, .indent_level = 2,
+                        .strip_mods = false, );
+    const uint32_t offset = info.bit_off / 8;
+    unsigned int need_off = offset, align_off, align;
+    default_printer.reset();
+
+    if (off > need_off) {
+        throw std::runtime_error("Something is wrong for "
+                                 + std::string(info.field_name)
+                                 + "'s variable #" + std::to_string(info.index)
+                                 + ": need offset " + std::to_string(need_off)
+                                 + ", already at " + std::to_string(off) + ".");
+    }
+
+    if (off < need_off) {
+        default_printer.sprintf_event("    char __pad%d[%d];\n", pad_cnt,
+                                      need_off - off);
+        pad_cnt++;
+    }
+
+    default_printer.sprintf_event("    ");
+    int err = btf_dump__emit_type_decl(btf_dumper.get(), info.type_id, &opts);
+    if (err) {
+        throw std::runtime_error("fail to dump variable #"
+                                 + std::to_string(info.index) + ": "
+                                 + std::to_string(err) + ".");
+    }
+    default_printer.sprintf_event(";\n");
+
+    off = offset + info.size;
+    output += default_printer.buffer;
 }
 
 void
 c_struct_define_generator::enter_struct_field(std::string &output,
                                               field_info info)
 {
-    if (info.bit_sz != 0) {
+    if (info.bit_sz != 0 || info.bit_off % 8) {
         std::cerr << "bitfield not supported" << std::endl;
         throw std::runtime_error("bitfield not supported");
     }

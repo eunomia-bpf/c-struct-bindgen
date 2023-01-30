@@ -37,9 +37,7 @@ c_struct_json_generator::end_generate(std::string &output)
 }
 
 void
-c_struct_json_generator::enter_struct_def(std::string &output,
-                                          const char *struct_name,
-                                          uint16_t vlen)
+c_struct_json_generator::enter_struct_def(std::string &output, struct_info info)
 {
     if (walk_count == 0) {
         // generate marshal function
@@ -50,8 +48,8 @@ static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
     assert(dst && src);
 )";
         char struct_def[BUFFER_SIZE];
-        snprintf(struct_def, sizeof(struct_def), function_proto, struct_name,
-                 struct_name);
+        snprintf(struct_def, sizeof(struct_def), function_proto,
+                 info.struct_name, info.struct_name);
         output += struct_def;
     }
     else {
@@ -63,15 +61,14 @@ static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
     assert(dst && src);
 )";
         char struct_def[BUFFER_SIZE];
-        snprintf(struct_def, sizeof(struct_def), function_proto, struct_name,
-                 struct_name);
+        snprintf(struct_def, sizeof(struct_def), function_proto,
+                 info.struct_name, info.struct_name);
         output += struct_def;
     }
 }
 
 void
-c_struct_json_generator::exit_struct_def(std::string &output,
-                                         const char *struct_name)
+c_struct_json_generator::exit_struct_def(std::string &output, struct_info info)
 {
     output += "}\n";
 }
