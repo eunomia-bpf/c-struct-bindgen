@@ -1,11 +1,38 @@
 # struct-bindgen
 
-A tool for generate marshal and unmarshal functions for C structs using BTF info. This tool can be use to:
+A tool for generate marshal and unmarshal functions and bindings for C structs using BTF info.
 
-- generate functions bindings for passing c struct from ebpf programs and host environments, to wasm runtime: see [eunomia-bpf](https://github.com/eunomia-bpf/eunomia-bpf) project.
-- generate marshal and unmarshal functions for convert C structs to JSON format.
+With a C struct defined like this:
 
-## Usage - Genereate Struct to Struct binding func
+```c
+#ifndef __SIGSNOOP_H
+#define __SIGSNOOP_H
+#define TASK_COMM_LEN 13
+
+struct event2 {
+    char b;
+    float x;
+    double y;
+    int z;
+    long long int a;
+    short comm[TASK_COMM_LEN];
+    void* unused_ptr;
+};
+
+#endif
+```
+
+This tool can be use to:
+
+- generate struct bindings for passing c struct from ebpf programs and host environments, to wasm runtime in [eunomia-bpf](https://github.com/eunomia-bpf/eunomia-bpf) project, for example:
+
+
+
+- generate marshal and unmarshal functions for convert C structs to JSON format, for example:
+
+
+
+## Usage - Genereate Struct to Struct bindings
 
 See `examples/` for [examples](examples).
 

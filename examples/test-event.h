@@ -1,7 +1,7 @@
 #ifndef __SIGSNOOP_H
 #define __SIGSNOOP_H
 
-#define TASK_COMM_LEN	16
+#define TASK_COMM_LEN	13
 
 struct event {
 	unsigned int pid;
@@ -12,12 +12,13 @@ struct event {
 };
 
 struct event2 {
-	void* unused_ptr;
+	char b;
 	float x;
 	double y;
 	int z;
 	long long int a;
 	short comm[TASK_COMM_LEN];
+	void* unused_ptr;
 };
 
 struct event3 {
