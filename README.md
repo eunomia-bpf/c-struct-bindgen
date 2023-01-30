@@ -24,9 +24,25 @@ struct event2 {
 
 This tool can be use to:
 
-- generate struct bindings for passing c struct from ebpf programs and host environments, to wasm runtime in [eunomia-bpf](https://github.com/eunomia-bpf/eunomia-bpf) project, for example:
+- generate struct bindings for correctly representing C struct layout, which can be used to pass c struct from ebpf programs and host environments, to wasm runtime in [eunomia-bpf](https://github.com/eunomia-bpf/eunomia-bpf) project, for example:
 
-
+```c
+struct event2 {
+    char b;
+    char __pad0[3];
+    float x;
+    double y;
+    int z;
+    char __pad1[4];
+    long long a;
+    short comm[13];
+    char __pad2[6];
+    uint64_t unused_ptr;
+    char end;
+    char __pad3[7];
+} __attribute__((packed));
+static_assert(sizeof(struct event2) == 80, "Size of event2 is not 80");
+```
 
 - generate marshal and unmarshal functions for convert C structs to JSON format, for example:
 
