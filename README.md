@@ -46,6 +46,7 @@ static_assert(sizeof(struct event2) == 80, "Size of event2 is not 80");
 
 - generate marshal and unmarshal functions for convert C structs to JSON format, for example:
 
+[TODO]
 
 ## Usage - Genereate Struct to Struct binding
 

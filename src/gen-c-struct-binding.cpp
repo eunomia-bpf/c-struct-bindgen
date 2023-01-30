@@ -229,6 +229,7 @@ binding_generator_base::get_c_file_header()
                        std::back_inserter(upper_name), ::toupper);
         // replace . with _
         std::replace(upper_name.begin(), upper_name.end(), '.', '_');
+        std::replace(upper_name.begin(), upper_name.end(), '-', '_');
         const char *program_once_format = R"(
 #ifndef __STRUCT_MARSHAL_%s_H__
 #define __STRUCT_MARSHAL_%s_H__

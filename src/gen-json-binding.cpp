@@ -26,6 +26,7 @@ c_struct_json_generator::start_generate(std::string &output)
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
+#include "cJSON.h"
 )";
     output += header;
 }
@@ -42,9 +43,7 @@ c_struct_json_generator::enter_struct_def(std::string &output, struct_info info)
     if (walk_count == 0) {
         // generate marshal function
         const char *function_proto = R"(
-static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
-    // avoid -Wpointer-arith warning
-    char* dst = (char*)_dst;
+static void marshal_struct_%s__to_json_str(char *dst, const struct %s *src) {
     assert(dst && src);
 )";
         char struct_def[BUFFER_SIZE];
@@ -55,9 +54,7 @@ static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
     else {
         // generate unmarshal function
         const char *function_proto = R"(
-static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
-    // avoid -Wpointer-arith warning
-    const char* src = (const char*)_src;
+static void unmarshal_struct_%s__from_json_str(struct %s *dst, const char *src) {
     assert(dst && src);
 )";
         char struct_def[BUFFER_SIZE];

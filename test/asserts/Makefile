@@ -8,5 +8,7 @@ generate-headers: $(TEST_CASES)
 .PHONY:$(TEST_CASES)
 # build the test cases
 $(TEST_CASES):
-	../../build/bin/Debug/struct-bindgen $@ > $@.binding.h
+	../../build/bin/Debug/struct-bindgen $@ > $@.struct-binding.h
+	../../build/bin/Debug/struct-bindgen -c $@ > $@.binding.h
+	../../build/bin/Debug/struct-bindgen -j $@ > $@.json-binding.h
 

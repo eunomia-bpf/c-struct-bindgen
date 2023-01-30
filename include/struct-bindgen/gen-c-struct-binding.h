@@ -157,7 +157,7 @@ class c_struct_json_generator : public binding_generator_base
     c_struct_json_generator(btf *btf_data_info, config &c)
       : binding_generator_base(btf_data_info, c)
     {
-        max_walk_count = 1;
+        max_walk_count = 2;
     }
     void start_generate(std::string &output) override;
     void end_generate(std::string &output) override;

@@ -370,4 +370,4 @@ errors
 doxygens/
 docs/
 Catch2
-test/asserts/*.binding.h
+test/asserts/*binding.h
