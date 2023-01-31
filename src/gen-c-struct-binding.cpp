@@ -28,8 +28,7 @@ btf_dump_event_printf(void *ctx, const char *fmt, va_list args)
 }
 
 int
-binding_generator_base::sprintf_printer::vprintf(const char *fmt,
-                                                        va_list args)
+binding_generator_base::sprintf_printer::vprintf(const char *fmt, va_list args)
 {
     char output_buffer_pointer[EVENT_SIZE];
     int res = vsnprintf(output_buffer_pointer, EVENT_SIZE, fmt, args);
@@ -292,7 +291,7 @@ static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
 )";
         default_printer.reset();
         default_printer.printf(function_proto, info.struct_name,
-                                      info.struct_name);
+                               info.struct_name);
         output += default_printer.buffer;
     }
     else {
@@ -305,7 +304,7 @@ static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
 )";
         default_printer.reset();
         default_printer.printf(function_proto, info.struct_name,
-                                      info.struct_name);
+                               info.struct_name);
         output += default_printer.buffer;
     }
 }
@@ -385,6 +384,7 @@ c_struct_marshal_generator::unmarshal_field(std::string &output,
         output += field_marshal_code;
     }
     else if (strcmp(info.field_type, "union") == 0) {
+        // TODO: implement union support
         const char *union_type_format =
             R"(    unmarshal_union_%s__from_binary(&dst->%s, src + %d);
 )";
@@ -455,7 +455,7 @@ c_struct_define_generator::exit_struct_def(std::string &output,
     if (off < info.size) {
         default_printer.reset();
         default_printer.printf("    char __pad%d[%d];\n", pad_cnt,
-                                      info.size - off);
+                               info.size - off);
         output += default_printer.buffer;
     }
     output += "} __attribute__((packed));\n";
@@ -485,7 +485,7 @@ c_struct_define_generator::define_new_field(std::string &output,
     }
     if (off < need_off) {
         default_printer.printf("    char __pad%d[%d];\n", pad_cnt,
-                                      need_off - off);
+                               need_off - off);
         pad_cnt++;
     }
     // avid pointer use

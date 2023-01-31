@@ -61,7 +61,7 @@ marshal_struct_%s__to_json_str(const struct %s *src)
         // generate unmarshal function
         const char *function_proto = R"(
 static struct %s *
-unmarshal_struct_%s__from_json_str(struct event *dst, const char *src)
+unmarshal_struct_%s__from_json_str(struct %s *dst, const char *src)
 {
     assert(dst && src);
     cJSON *object = cJSON_Parse(src);
@@ -71,7 +71,7 @@ unmarshal_struct_%s__from_json_str(struct event *dst, const char *src)
 )";
         char struct_def[BUFFER_SIZE];
         snprintf(struct_def, sizeof(struct_def), function_proto,
-                 info.struct_name, info.struct_name);
+                 info.struct_name, info.struct_name, info.struct_name);
         output += struct_def;
     }
 }
@@ -135,7 +135,7 @@ c_struct_json_generator::marshal_json_type(std::string &output, field_info info,
         cJSON_Delete(%s);
         return NULL;
     }
-    if (!cJSON_AddItemTo%s(object, "%s", %s_object)) {
+    if (!cJSON_AddItemTo%s(object, "%s", %s)) {
         cJSON_Delete(%s);
         return NULL;
     }
@@ -190,6 +190,7 @@ c_struct_json_generator::marshal_field(std::string &output, field_info info)
         marshal_json_struct(output, info, "object");
     }
     else if (btf_is_union(var)) {
+        // TODO: add more type support
         throw std::runtime_error("union is not supported");
     }
     else {

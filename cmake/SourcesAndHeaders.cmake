@@ -24,4 +24,5 @@ set(test_sources
     src/bpf_object_reader_test.cpp
     src/marshal_struct_test.cpp
     src/generate_c_struct_binding_test.cpp
+    src/marshal_json_test.cpp
 )
