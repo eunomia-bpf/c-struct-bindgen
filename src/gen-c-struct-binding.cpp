@@ -24,11 +24,11 @@ static void
 btf_dump_event_printf(void *ctx, const char *fmt, va_list args)
 {
     auto printer = static_cast<binding_generator_base::sprintf_printer *>(ctx);
-    printer->vsprintf_event(fmt, args);
+    printer->vprintf(fmt, args);
 }
 
 int
-binding_generator_base::sprintf_printer::vsprintf_event(const char *fmt,
+binding_generator_base::sprintf_printer::vprintf(const char *fmt,
                                                         va_list args)
 {
     char output_buffer_pointer[EVENT_SIZE];
@@ -60,11 +60,11 @@ binding_generator_base::sprintf_printer::snprintf_event(size_t __maxlen,
 }
 
 int
-binding_generator_base::sprintf_printer::sprintf_event(const char *fmt, ...)
+binding_generator_base::sprintf_printer::printf(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    int res = vsprintf_event(fmt, args);
+    int res = vprintf(fmt, args);
     va_end(args);
     return res;
 }
@@ -291,7 +291,7 @@ static void marshal_struct_%s__to_binary(void *_dst, const struct %s *src) {
     assert(dst && src);
 )";
         default_printer.reset();
-        default_printer.sprintf_event(function_proto, info.struct_name,
+        default_printer.printf(function_proto, info.struct_name,
                                       info.struct_name);
         output += default_printer.buffer;
     }
@@ -304,7 +304,7 @@ static void unmarshal_struct_%s__from_binary(struct %s *dst, const void *_src) {
     assert(dst && src);
 )";
         default_printer.reset();
-        default_printer.sprintf_event(function_proto, info.struct_name,
+        default_printer.printf(function_proto, info.struct_name,
                                       info.struct_name);
         output += default_printer.buffer;
     }
@@ -454,7 +454,7 @@ c_struct_define_generator::exit_struct_def(std::string &output,
 {
     if (off < info.size) {
         default_printer.reset();
-        default_printer.sprintf_event("    char __pad%d[%d];\n", pad_cnt,
+        default_printer.printf("    char __pad%d[%d];\n", pad_cnt,
                                       info.size - off);
         output += default_printer.buffer;
     }
@@ -484,7 +484,7 @@ c_struct_define_generator::define_new_field(std::string &output,
                                  + ", already at " + std::to_string(off) + ".");
     }
     if (off < need_off) {
-        default_printer.sprintf_event("    char __pad%d[%d];\n", pad_cnt,
+        default_printer.printf("    char __pad%d[%d];\n", pad_cnt,
                                       need_off - off);
         pad_cnt++;
     }
@@ -513,14 +513,14 @@ c_struct_define_generator::define_new_field(std::string &output,
         }
         info.type_id = ptr_type_id;
     }
-    default_printer.sprintf_event("    ");
+    default_printer.printf("    ");
     int err = btf_dump__emit_type_decl(btf_dumper.get(), info.type_id, &opts);
     if (err) {
         throw std::runtime_error("fail to dump variable #"
                                  + std::to_string(info.index) + ": "
                                  + std::to_string(err) + ".");
     }
-    default_printer.sprintf_event(";\n");
+    default_printer.printf(";\n");
 
     off = offset + info.size;
     output += default_printer.buffer;

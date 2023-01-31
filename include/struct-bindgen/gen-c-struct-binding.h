@@ -38,9 +38,9 @@ class binding_generator_base
             buffer.reserve(size);
             buffer.clear();
         }
-        int sprintf_event(const char *fmt, ...);
+        int printf(const char *fmt, ...);
         int snprintf_event(size_t __maxlen, const char *fmt, ...);
-        int vsprintf_event(const char *fmt, va_list args);
+        int vprintf(const char *fmt, va_list args);
     };
     binding_generator_base(btf *object_btf_info, config &c);
     binding_generator_base(binding_generator_base &) = delete;
@@ -150,6 +150,17 @@ class c_struct_define_generator : public binding_generator_base
 
 class c_struct_json_generator : public binding_generator_base
 {
+    void marshal_json_type(std::string &output, field_info info,
+                           const char *json_type_str,
+                           const char *type_conversion,
+                           const char *base_json_name, bool is_array);
+    void marshal_json_struct(std::string &output, field_info info,
+                             const char *base_json_name);
+    void unmarshal_json_type(std::string &output, field_info info,
+                             const char *json_type_str,
+                             const char *type_conversion,
+                             const char *base_json_name,
+                             const char *value_type_str);
     void marshal_field(std::string &output, field_info info);
     void unmarshal_field(std::string &output, field_info info);
 
