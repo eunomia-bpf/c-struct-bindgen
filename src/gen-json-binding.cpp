@@ -36,8 +36,8 @@ c_struct_json_generator::start_generate(std::string &output)
 
 static unsigned long long str2dec(const char* str) {
     unsigned long long ret = 0;
-    while (str) {
-        ret = ret * 10 + (*str);
+    while (*str) {
+        ret = ret * 10 + (*str - '0');
         str++;
     }
     return ret;
@@ -45,7 +45,7 @@ static unsigned long long str2dec(const char* str) {
 static char* dec2str(unsigned long long x) {
     int digcnt = 0;
     {
-        unsigned long long t = 0;
+        unsigned long long t = x;
         if (t == 0) {
             digcnt = 1;
         } else {
@@ -56,14 +56,14 @@ static char* dec2str(unsigned long long x) {
         }
     }
     char* ret = (char*)malloc(digcnt + 1);
-    ret[digcnt - 1] = '0';
+    ret[digcnt] = '\0';
     if (x == 0) {
         ret[0] = '0';
     } else {
-        int cursor = digcnt - 2;
+        int cursor = digcnt - 1;
 
         while (x) {
-            ret[cursor] = x % 10;
+            ret[cursor] = (x % 10) + '0';
             x /= 10;
             cursor--;
         }
@@ -224,11 +224,9 @@ c_struct_json_generator::marshal_field(std::string &output, field_info info)
     auto var = btf__type_by_id(btf_data, info.type_id);
 
     if ((btf_is_int(var) && var->size <= 4) || btf_is_float(var)) {
-        //  浮点数和不超过四字节的整数，用Number存
         marshal_json_type(output, info, "Number", "", "object", false);
 
     } else if (btf_is_ptr(var) || (btf_is_int(var) && var->size > 4)) {
-        // 指针和大于四字节的整数，用文本存
         default_printer.printf(R"(
             {
             char* str_final_elem = dec2str((long long int)src->%s);
@@ -368,12 +366,11 @@ void c_struct_json_generator::marshal_json_array(
         array_info->nelems, dim);
     std::string index = generate_dim_accessor(dim);
     if (btf_is_array(elem_type)) {
-        // 如果下一级元素还是数组的话，那么往数组里加元素留给下一级处理
         marshal_json_array(output, field_name, array_info->type, object_name,
                            true, curr_printer, nullptr, dim + 1);
     } else if ((btf_is_int(elem_type) && elem_type->size <= 4) ||
                btf_is_float(elem_type)) {
-        //  浮点数和不超过四字节的整数，用Number存
+        //  Use Number to store smaller scalars and floatings 
         default_printer.printf(R"(
             cJSON* final_elem = cJSON_CreateNumber(%s src -> %s %s );
             if (!final_elem) {
@@ -388,7 +385,7 @@ void c_struct_json_generator::marshal_json_array(
     }
     else if (btf_is_ptr(elem_type) ||
              (btf_is_int(elem_type) && elem_type->size > 4)) {
-        // 指针和大于四字节的整数，用文本存
+        // Use store for larger scalars
         default_printer.printf(R"(
             char* str_final_elem = dec2str((long long int)src-> %s %s);
             cJSON* final_elem = cJSON_CreateString(str_final_elem);
@@ -445,7 +442,7 @@ void c_struct_json_generator::unmarshal_json_array(
     snprintf(top_var_name, sizeof(top_var_name), "%s_object", field_name);
     base_json_array_var_name = top_var_name;
     if (dim == 0) {
-        // 第一层
+        // The top dimension
         curr_printer.printf(R"(
             cJSON* %s = cJSON_GetObjectItemCaseSensitive(object, "%s");
             if (!%s) return NULL;
@@ -472,12 +469,12 @@ void c_struct_json_generator::unmarshal_json_array(
     std::string index = generate_dim_accessor(dim);
 
     if (btf_is_array(elem_type)) {
-        // 如果下一级元素还是数组的话，那么往数组里加元素留给下一级处理
+        // If the next dim is still array, then recursive
         unmarshal_json_array(output, field_name, array_info->type, curr_printer,
                              for_each_var_name, dim + 1);
     } else if ((btf_is_int(elem_type) && elem_type->size <= 4) ||
                btf_is_float(elem_type)) {
-        //  浮点数和不超过四字节的整数，用Number存
+        //  Use Number to store integer less than 4byte and floats
         default_printer.printf(R"(
             if (!cJSON_IsNumber(%s)){
                 return NULL;
@@ -488,7 +485,7 @@ void c_struct_json_generator::unmarshal_json_array(
                                index.c_str(), for_each_var_name);
     } else if (btf_is_ptr(elem_type) ||
                (btf_is_int(elem_type) && elem_type->size > 4)) {
-        // 指针和大于四字节的整数，用文本存
+        // Use string to store pointers and integers larger than 4byte
         default_printer.printf(R"(
             if (!cJSON_IsString(%s)){
                 return NULL;
