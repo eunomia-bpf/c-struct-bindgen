@@ -158,6 +158,13 @@ class c_struct_json_generator : public binding_generator_base
                             sprintf_printer& curr_printer,
                             const char* base_json_field_name,
                             int dim = 0);
+    void unmarshal_json_array(std::string& output,
+                            const char* field_name,
+                            int type_id,
+                            sprintf_printer& curr_printer,
+                            const char* base_json_array_var_name,
+                            int dim = 0);
+    
     void marshal_json_type(std::string &output, field_info info,
                            const char *json_type_str,
                            const char *type_conversion,

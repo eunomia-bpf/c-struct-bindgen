@@ -1,7 +1,7 @@
 #ifndef __SIGSNOOP_H
 #define __SIGSNOOP_H
 
-#define TASK_COMM_LEN 13
+#define TASK_COMM_LEN 16
 
 struct event {
     unsigned int pid;
