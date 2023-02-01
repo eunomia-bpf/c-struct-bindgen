@@ -162,12 +162,13 @@ c_struct_json_generator::marshal_json_struct(std::string &output,
         cJSON_Delete(%s);
         return NULL;
     }
+    cJSON_free(%s_object_str);
 )";
     default_printer.printf(format, info.field_name, info.field_type_name,
                            info.field_name, info.field_name, base_json_name,
                            info.field_name, info.field_name, info.field_name,
                            base_json_name, info.field_name, info.field_name,
-                           base_json_name);
+                           base_json_name, info.field_name);
 }
 
 void
@@ -286,7 +287,16 @@ c_struct_json_generator::unmarshal_field(std::string &output, field_info info)
         unmarshal_json_array(output, info.field_name, info.type_id,
                              default_printer, nullptr);
     } else if (btf_is_struct(var)) {
-        // TODO
+        const char* format = R"(
+    cJSON* %s_obj = cJSON_GetObjectItemCaseSensitive(object, "%s");
+    if(!%s_obj) return NULL;
+    char* %s_str = cJSON_PrintUnformatted(%s_obj);
+    unmarshal_struct_%s__from_json_str(&dst->%s, %s_str);
+    cJSON_free(%s_str);
+        )";
+        default_printer.printf(
+            format, info.field_name, info.field_name, info.field_name,
+            info.field_name, info.field_name, info.field_type_name, info.field_name, info.field_name, info.field_name);
     } else if (btf_is_union(var)) {
         throw std::runtime_error("union is not supported");
     } else {
@@ -351,7 +361,7 @@ void c_struct_json_generator::marshal_json_array(
     snprintf(object_name, sizeof(object_name), "%s_object_dim_%d", field_name,
              dim);
     curr_printer.printf("{");
-    if (btf_is_int(elem_type) && elem_type->size == 1) {
+    if (btf_is_int(elem_type) && elem_type->size == 1 && dim == 0) {
         // Special handle for strings
         curr_printer.printf(R"(
         cJSON* %s;
@@ -469,7 +479,7 @@ void c_struct_json_generator::unmarshal_json_array(
                                 top_var_name, field_name, top_var_name);
     }
     curr_printer.printf("{");
-    if (btf_is_int(elem_type) && elem_type->size == 1) {
+    if (btf_is_int(elem_type) && elem_type->size == 1 && dim == 0) {
             curr_printer.printf(R"(
             if(!cJSON_IsString(%s)) return NULL;
             strncpy(dst -> %s, %s -> valuestring, %d);
