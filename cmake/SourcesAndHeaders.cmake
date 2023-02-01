@@ -26,4 +26,7 @@ set(test_sources
     src/generate_c_struct_binding_test.cpp
     src/marshal_json_test.cpp
     src/simple_array_test.cpp
+    src/pointer_and_int64_test.cpp
+    src/string_marshal_test.cpp
+    src/struct_marshal_test.cpp
 )
