@@ -135,7 +135,7 @@ c_struct_json_generator::marshal_json_type(std::string &output, field_info info,
         cJSON_Delete(%s);
         return NULL;
     }
-    if (!cJSON_AddItemTo%s(object, "%s", %s)) {
+    if (!cJSON_AddItemTo%s(object, "%s", %s_object)) {
         cJSON_Delete(%s);
         return NULL;
     }
@@ -144,7 +144,7 @@ c_struct_json_generator::marshal_json_type(std::string &output, field_info info,
     default_printer.printf(format, info.field_name, json_type_str,
                            type_conversion, info.field_name, info.field_name,
                            base_json_name, add_to, info.field_name,
-                           base_json_name, base_json_name);
+                           info.field_name, base_json_name);
 }
 
 void
