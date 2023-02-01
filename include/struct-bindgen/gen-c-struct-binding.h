@@ -150,6 +150,12 @@ class c_struct_define_generator : public binding_generator_base
 
 class c_struct_json_generator : public binding_generator_base
 {
+    void marshal_json_array(std::string& output,
+                            const char* field_name,
+                            int type_id,
+                            const char* base_json_name,
+                            bool base_json_is_array,
+                            int dim = 0);
     void marshal_json_type(std::string &output, field_info info,
                            const char *json_type_str,
                            const char *type_conversion,

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstring>
 #include "struct-bindgen/gen-c-struct-binding.h"
+#include <sstream>
 
 extern "C" {
 #include <bpf/libbpf.h>
@@ -13,6 +14,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 }
 
 using namespace eunomia;
@@ -217,8 +219,8 @@ c_struct_json_generator::unmarshal_field(std::string &output, field_info info)
                             "valueint");
     }
     else if (btf_is_array(var)) {
-        // is char array
-        // TODO
+        marshal_json_array(output, info.field_name, info.type_id, "object",
+                           false);
     }
     else if (btf_is_struct(var)) {
         // TODO
@@ -246,4 +248,52 @@ c_struct_json_generator::enter_struct_field(std::string &output,
     else {
         unmarshal_field(output, info);
     }
+}
+
+void c_struct_json_generator::marshal_json_array(std::string& output,
+                                                 const char* field_name,
+                                                 int type_id,
+                                                 const char* base_json_name,
+                                                 bool base_json_is_array,
+                                                 int dim) {
+    using std::cerr;
+    using std::endl;
+    const btf_type* type_info = btf__type_by_id(this->btf_data, type_id);
+    assert(btf_is_array(type_info));
+    const struct btf_array* array_info = btf_array(type_info);
+    const struct btf_type* elem_type =
+        btf__type_by_id(this->btf_data, array_info->type);
+    // std::osstr
+    sprintf_printer& curr_printer = default_printer;
+    curr_printer.reset();
+    curr_printer.printf("{\n");
+    char object_name[512];
+    snprintf(object_name, sizeof(object_name), "%s_object_dim_%d", field_name,
+             dim);
+
+    curr_printer.printf(
+        "for(int var_dim_%d = 0; var_dim_%d < %d; var_dim_%d ++) {\n", dim, dim,
+        array_info->nelems, dim);
+
+    const char* format = R"(
+    cJSON *%s = cJSON_CreateArray(src->%s);
+    if (! %s) {
+        // cJSON_Delete(%s);
+        return NULL;
+    }
+
+)";
+    curr_printer.printf(format, object_name, field_name, object_name);
+    if (btf_is_array(elem_type)) {
+        marshal_json_array(output, field_name, elem_type->type, object_name,
+                           true, dim + 1);
+    } else if (btf_is_int(elem_type) || btf_is_float(elem_type) ||
+               btf_is_ptr(elem_type)) {
+        // TODO: common types
+    } else {
+        // TODO: struct arrays
+        throw std::runtime_error("Support for struct arrays is WIP");
+    }
+    curr_printer.printf("}\n");
+    output += curr_printer.buffer;
 }
