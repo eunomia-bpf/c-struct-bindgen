@@ -350,28 +350,45 @@ void c_struct_json_generator::marshal_json_array(
     char object_name[512];
     snprintf(object_name, sizeof(object_name), "%s_object_dim_%d", field_name,
              dim);
+    curr_printer.printf("{");
+    if (btf_is_int(elem_type) && elem_type->size == 1) {
+        // Special handle for strings
+        curr_printer.printf(R"(
+        cJSON* %s;
+        {
+            char buf[%d];
+            int i = 0;
+            for(;i < %d; i++) buf[i] = src -> %s [i];
+            buf[%d] = '\0'; 
+            %s = cJSON_CreateString(buf);
 
-    const char* format = R"(
-    {
+        }
+    )",
+                           object_name, array_info->nelems + 1, array_info->nelems,
+                            field_name, array_info->nelems, object_name);
+    } else {
+        const char* format = R"(
     cJSON *%s = cJSON_CreateArray();
     if (!%s) {
         return NULL;
     }
 
 )";
-    curr_printer.printf(format, object_name, object_name);
+        curr_printer.printf(format, object_name, object_name);
 
-    curr_printer.printf(
-        "int var_dim_%d = 0;\nfor(; var_dim_%d < %d; var_dim_%d ++) {\n", dim, dim,
-        array_info->nelems, dim);
-    std::string index = generate_dim_accessor(dim);
-    if (btf_is_array(elem_type)) {
-        marshal_json_array(output, field_name, array_info->type, object_name,
-                           true, curr_printer, nullptr, dim + 1);
-    } else if ((btf_is_int(elem_type) && elem_type->size <= 4) ||
-               btf_is_float(elem_type)) {
-        //  Use Number to store smaller scalars and floatings 
-        default_printer.printf(R"(
+        curr_printer.printf(
+            "int var_dim_%d = 0;\nfor(; var_dim_%d < %d; var_dim_%d ++) {\n",
+            dim, dim, array_info->nelems, dim);
+        std::string index = generate_dim_accessor(dim);
+        if (btf_is_array(elem_type)) {
+            marshal_json_array(output, field_name, array_info->type,
+                               object_name, true, curr_printer, nullptr,
+                               dim + 1);
+        } else if ((btf_is_int(elem_type) && elem_type->size <= 4) ||
+                   btf_is_float(elem_type)) {
+            //  Use Number to store smaller scalars and floatings
+            default_printer.printf(
+                R"(
             cJSON* final_elem = cJSON_CreateNumber(%s src -> %s %s );
             if (!final_elem) {
                 return NULL;
@@ -380,13 +397,12 @@ void c_struct_json_generator::marshal_json_array(
                 return NULL;
             }
         )",
-                               btf_is_ptr(elem_type) ? "(long long int)" : "",
-                               field_name, index.c_str(), object_name);
-    }
-    else if (btf_is_ptr(elem_type) ||
-             (btf_is_int(elem_type) && elem_type->size > 4)) {
-        // Use store for larger scalars
-        default_printer.printf(R"(
+                btf_is_ptr(elem_type) ? "(long long int)" : "", field_name,
+                index.c_str(), object_name);
+        } else if (btf_is_ptr(elem_type) ||
+                   (btf_is_int(elem_type) && elem_type->size > 4)) {
+            // Use store for larger scalars
+            default_printer.printf(R"(
             char* str_final_elem = dec2str((long long int)src-> %s %s);
             cJSON* final_elem = cJSON_CreateString(str_final_elem);
             free(str_final_elem);
@@ -397,29 +413,31 @@ void c_struct_json_generator::marshal_json_array(
                 return NULL;
             }
         )",
-                               field_name, index.c_str(), object_name);
-    }
-    else {
-        // TODO: struct arrays
-        throw std::runtime_error("Support for struct arrays is WIP");
-    }
-    curr_printer.printf("}\n");  // This bracket is for the for-loop
-    if (base_json_is_array) {
-        curr_printer.printf(R"(
+                                   field_name, index.c_str(), object_name);
+        } else {
+            // TODO: struct arrays
+            throw std::runtime_error("Support for struct arrays is WIP");
+        }
+        curr_printer.printf("}\n");  // This bracket is for the for-loop
+        }
+        if (base_json_is_array) {
+            curr_printer.printf(R"(
             if (!cJSON_AddItemToArray(%s, %s)) {
                 return NULL;
             }
     )",
-                            base_json_name, object_name, object_name);
-    } else {
-        curr_printer.printf(R"(
+                                base_json_name, object_name, object_name);
+        } else {
+            curr_printer.printf(R"(
             if (!cJSON_AddItemToObject(%s, "%s", %s)) {
                 return NULL;
             }
     )",
-                            base_json_name, base_json_field_name, object_name);
-    }
-    curr_printer.printf("}\n");
+                                base_json_name, base_json_field_name,
+                                object_name);
+        }
+        curr_printer.printf("}\n");
+    
 }
 
 void c_struct_json_generator::unmarshal_json_array(
@@ -442,63 +460,72 @@ void c_struct_json_generator::unmarshal_json_array(
     snprintf(top_var_name, sizeof(top_var_name), "%s_object", field_name);
     base_json_array_var_name = top_var_name;
     if (dim == 0) {
-        // The top dimension
-        curr_printer.printf(R"(
+            // The top dimension
+            curr_printer.printf(R"(
             cJSON* %s = cJSON_GetObjectItemCaseSensitive(object, "%s");
             if (!%s) return NULL;
 
         )",
-                            top_var_name, field_name, top_var_name);
+                                top_var_name, field_name, top_var_name);
     }
-    curr_printer.printf(R"(
-     {
+    curr_printer.printf("{");
+    if (btf_is_int(elem_type) && elem_type->size == 1) {
+            curr_printer.printf(R"(
+            if(!cJSON_IsString(%s)) return NULL;
+            strncpy(dst -> %s, %s -> valuestring, %d);
+        )",
+                                top_var_name, field_name, top_var_name,
+                                array_info->nelems);
+    } else {
+            curr_printer.printf(R"(
      if (!cJSON_IsArray(%s)) {
          return NULL;
      }
 
  )",
-                        base_json_array_var_name);
-    char for_each_var_name[128];
-    snprintf(for_each_var_name, sizeof(for_each_var_name), "var_iter_dim_%d",
-             dim);
-    curr_printer.printf("int var_dim_%d = 0;\n", dim);
-    curr_printer.printf("cJSON* %s;\n", for_each_var_name);
+                                base_json_array_var_name);
+            char for_each_var_name[128];
+            snprintf(for_each_var_name, sizeof(for_each_var_name),
+                     "var_iter_dim_%d", dim);
+            curr_printer.printf("int var_dim_%d = 0;\n", dim);
+            curr_printer.printf("cJSON* %s;\n", for_each_var_name);
 
-    curr_printer.printf("cJSON_ArrayForEach(%s, %s) {", for_each_var_name,
-                        base_json_array_var_name);
-    std::string index = generate_dim_accessor(dim);
+            curr_printer.printf("cJSON_ArrayForEach(%s, %s) {",
+                                for_each_var_name, base_json_array_var_name);
+            std::string index = generate_dim_accessor(dim);
 
-    if (btf_is_array(elem_type)) {
-        // If the next dim is still array, then recursive
-        unmarshal_json_array(output, field_name, array_info->type, curr_printer,
-                             for_each_var_name, dim + 1);
-    } else if ((btf_is_int(elem_type) && elem_type->size <= 4) ||
-               btf_is_float(elem_type)) {
-        //  Use Number to store integer less than 4byte and floats
-        default_printer.printf(R"(
+            if (btf_is_array(elem_type)) {
+            // If the next dim is still array, then recursive
+            unmarshal_json_array(output, field_name, array_info->type,
+                                 curr_printer, for_each_var_name, dim + 1);
+            } else if ((btf_is_int(elem_type) && elem_type->size <= 4) ||
+                       btf_is_float(elem_type)) {
+            //  Use Number to store integer less than 4byte and floats
+            default_printer.printf(R"(
             if (!cJSON_IsNumber(%s)){
                 return NULL;
             }
             dst->%s%s = %s->valuedouble;
         )",
-                               for_each_var_name, field_name,
-                               index.c_str(), for_each_var_name);
-    } else if (btf_is_ptr(elem_type) ||
-               (btf_is_int(elem_type) && elem_type->size > 4)) {
-        // Use string to store pointers and integers larger than 4byte
-        default_printer.printf(R"(
+                                   for_each_var_name, field_name, index.c_str(),
+                                   for_each_var_name);
+            } else if (btf_is_ptr(elem_type) ||
+                       (btf_is_int(elem_type) && elem_type->size > 4)) {
+            // Use string to store pointers and integers larger than 4byte
+            default_printer.printf(R"(
             if (!cJSON_IsString(%s)){
                 return NULL;
             }
             dst->%s%s = str2dec(%s->valuestring);
         )",
-                               for_each_var_name, field_name,
-                               index.c_str(), for_each_var_name);
-    } else {
-        // TODO: struct arrays
-        throw std::runtime_error("Support for struct arrays is WIP");
+                                   for_each_var_name, field_name, index.c_str(),
+                                   for_each_var_name);
+            } else {
+            // TODO: struct arrays
+            throw std::runtime_error("Support for struct arrays is WIP");
+            }
+            curr_printer.printf("var_dim_%d ++;\n", dim);
+            curr_printer.printf("}\n");  // This bracket is for the for-loop
     }
-    curr_printer.printf("var_dim_%d ++;\n",dim);
-    curr_printer.printf("}\n");  // This bracket is for the for-loop
     curr_printer.printf("}\n");
 }

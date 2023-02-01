@@ -27,4 +27,5 @@ set(test_sources
     src/marshal_json_test.cpp
     src/simple_array_test.cpp
     src/pointer_and_int64_test.cpp
+    src/string_marshal_test.cpp
 )
