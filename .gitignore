@@ -2,7 +2,8 @@
 CMakeCache.*
 CMakeFiles/*
 [Tt]esting/*
-
+dec_str.h
+test-work
 ### VisualStudioCode ###
 .vscode/*
 .vscode/settings.json
