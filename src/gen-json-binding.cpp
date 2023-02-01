@@ -84,7 +84,9 @@ c_struct_json_generator::exit_struct_def(std::string &output, struct_info info)
     if (walk_count == 0) {
         // generate marshal function
         output = output + R"(
-    return cJSON_PrintUnformatted(object);
+    char* result_val = cJSON_PrintUnformatted(object);
+    cJSON_Delete(object);
+    return result_val;
 )";
     }
     else {
@@ -185,8 +187,8 @@ c_struct_json_generator::marshal_field(std::string &output, field_info info)
                           false);
     }
     else if (btf_is_array(var)) {
-        // is char array
-        // TODO
+        marshal_json_array(output, info.field_name, info.type_id, "object",
+                           false,default_printer, info.field_name);
     }
     else if (btf_is_struct(var)) {
         marshal_json_struct(output, info, "object");
@@ -219,8 +221,7 @@ c_struct_json_generator::unmarshal_field(std::string &output, field_info info)
                             "valueint");
     }
     else if (btf_is_array(var)) {
-        marshal_json_array(output, info.field_name, info.type_id, "object",
-                           false);
+        // TODO
     }
     else if (btf_is_struct(var)) {
         // TODO
@@ -250,50 +251,97 @@ c_struct_json_generator::enter_struct_field(std::string &output,
     }
 }
 
-void c_struct_json_generator::marshal_json_array(std::string& output,
-                                                 const char* field_name,
-                                                 int type_id,
-                                                 const char* base_json_name,
-                                                 bool base_json_is_array,
-                                                 int dim) {
+static std::string generate_dim_accessor(int dim) {
+    std::ostringstream os;
+    char buf[512];
+    for (int i = 0; i <= dim; i++) {
+        snprintf(buf, sizeof(buf), "[var_dim_%d]", i);
+        os << buf;
+    }
+    return os.str();
+}
+
+void c_struct_json_generator::marshal_json_array(
+    std::string& output,
+    const char* field_name,
+    int type_id,
+    const char* base_json_name,
+    bool base_json_is_array,
+    sprintf_printer& curr_printer,
+    const char* base_json_field_name,
+    int dim) {
     using std::cerr;
     using std::endl;
-    const btf_type* type_info = btf__type_by_id(this->btf_data, type_id);
+
+    const btf_type* type_info = btf__type_by_id(btf_data, type_id);
+
+    cerr << "rec dim = " << dim << endl;
+    cerr << "field name=" << field_name << endl;
+    cerr << "base json name = " << base_json_name << endl;
+    cerr << "type=" << type_info->type << " size=" << type_info->size
+         << " type_name=" << btf__name_by_offset(btf_data, type_info->name_off)
+         << endl;
     assert(btf_is_array(type_info));
     const struct btf_array* array_info = btf_array(type_info);
     const struct btf_type* elem_type =
         btf__type_by_id(this->btf_data, array_info->type);
-    // std::osstr
-    sprintf_printer& curr_printer = default_printer;
-    curr_printer.reset();
-    curr_printer.printf("{\n");
+
     char object_name[512];
     snprintf(object_name, sizeof(object_name), "%s_object_dim_%d", field_name,
              dim);
+
+    const char* format = R"(
+    {
+    cJSON *%s = cJSON_CreateArray();
+    if (!%s) {
+        return NULL;
+    }
+
+)";
+    curr_printer.printf(format, object_name, object_name);
 
     curr_printer.printf(
         "for(int var_dim_%d = 0; var_dim_%d < %d; var_dim_%d ++) {\n", dim, dim,
         array_info->nelems, dim);
 
-    const char* format = R"(
-    cJSON *%s = cJSON_CreateArray(src->%s);
-    if (! %s) {
-        // cJSON_Delete(%s);
-        return NULL;
-    }
-
-)";
-    curr_printer.printf(format, object_name, field_name, object_name);
     if (btf_is_array(elem_type)) {
-        marshal_json_array(output, field_name, elem_type->type, object_name,
-                           true, dim + 1);
+        // 如果下一级元素还是数组的话，那么往数组里加元素留给下一级处理
+        marshal_json_array(output, field_name, array_info->type, object_name,
+                           true, curr_printer, nullptr, dim + 1);
     } else if (btf_is_int(elem_type) || btf_is_float(elem_type) ||
                btf_is_ptr(elem_type)) {
-        // TODO: common types
+        std::string index = generate_dim_accessor(dim);
+        // 如果下一级元素不是数组的话，那么要在这一级处理
+        default_printer.printf(R"(
+            cJSON* final_elem = cJSON_CreateNumber(%s src -> %s %s );
+            if (!final_elem) {
+                return NULL;
+            }
+            if (!cJSON_AddItemToArray(%s, final_elem)){
+                return NULL;
+            }
+        )",
+                               btf_is_ptr(elem_type) ? "(long long int)" : "",
+                               field_name, index.c_str(), object_name);
     } else {
         // TODO: struct arrays
         throw std::runtime_error("Support for struct arrays is WIP");
     }
+    curr_printer.printf("}\n");  // This bracket is for the for-loop
+    if (base_json_is_array) {
+        curr_printer.printf(R"(
+            if (!cJSON_AddItemToArray(%s, %s)) {
+                return NULL;
+            }
+    )",
+                            base_json_name, object_name, object_name);
+    } else {
+        curr_printer.printf(R"(
+            if (!cJSON_AddItemToObject(%s, "%s", %s)) {
+                return NULL;
+            }
+    )",
+                            base_json_name, base_json_field_name, object_name);
+    }
     curr_printer.printf("}\n");
-    output += curr_printer.buffer;
 }

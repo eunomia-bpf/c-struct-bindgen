@@ -155,6 +155,8 @@ class c_struct_json_generator : public binding_generator_base
                             int type_id,
                             const char* base_json_name,
                             bool base_json_is_array,
+                            sprintf_printer& curr_printer,
+                            const char* base_json_field_name,
                             int dim = 0);
     void marshal_json_type(std::string &output, field_info info,
                            const char *json_type_str,
