@@ -1,8 +1,3 @@
-//!  SPDX-License-Identifier: MIT
-//!
-//! Copyright (c) 2023, eunomia-bpf
-//! All rights reserved.
-//!
 #ifndef __C_STRUCT_BINDING_GENERATOR_CONFIG_H__
 #define __C_STRUCT_BINDING_GENERATOR_CONFIG_H__
 
