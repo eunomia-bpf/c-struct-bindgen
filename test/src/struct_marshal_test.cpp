@@ -1,3 +1,9 @@
+//!  SPDX-License-Identifier: MIT
+//!
+//! Copyright (c) 2023, eunomia-bpf
+//! All rights reserved.
+//!
+
 #include <inttypes.h>
 #include <cassert>
 #include <catch2/catch_test_macros.hpp>

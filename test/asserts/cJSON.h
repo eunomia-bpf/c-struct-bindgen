@@ -16,11 +16,7 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE.
 */
-//!  SPDX-License-Identifier: MIT
-//!
-//! Copyright (c) 2023, eunomia-bpf
-//! All rights reserved.
-//!
+
 
 #ifndef cJSON__h
 #define cJSON__h

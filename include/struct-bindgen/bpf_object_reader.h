@@ -3,11 +3,6 @@
  * Copyright (c) 2022, Yusheng Zheng
  * All rights reserved.
  */
- //!  SPDX-License-Identifier: MIT
-//!
-//! Copyright (c) 2023, eunomia-bpf
-//! All rights reserved.
-//!
 #ifndef EUNOMIA_BPF_OBJECT_READER_HPP_
 #define EUNOMIA_BPF_OBJECT_READER_HPP_
 
