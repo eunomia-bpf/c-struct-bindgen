@@ -1,3 +1,8 @@
+//!  SPDX-License-Identifier: MIT
+//!
+//! Copyright (c) 2023, eunomia-bpf
+//! All rights reserved.
+//!
 struct S3{
   int a;
   int b;  
