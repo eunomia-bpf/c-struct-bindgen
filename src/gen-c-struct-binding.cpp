@@ -463,7 +463,7 @@ c_struct_define_generator::exit_struct_def(std::string &output,
         output += default_printer.buffer;
     }
     output += "} __attribute__((packed));\n";
-    output = output + "static_assert(sizeof(struct event2) == "
+    output = output + "static_assert(sizeof(struct " + info.struct_name + ") == "
              + std::to_string(info.size) + ", \"Size of event2 is not "
              + std::to_string(info.size) + "\");\n";
 }
